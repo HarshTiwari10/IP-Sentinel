@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from app.db import users_collection, ip_logs_collection, blacklist_collection, config_collection
 from app.utils.auth_middleware import token_required
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import bcrypt
 import jwt
 
@@ -14,7 +14,11 @@ def serialize_doc(doc):
     doc["_id"] = str(doc["_id"])
     for key, val in list(doc.items()):
         if isinstance(val, datetime):
-            doc[key] = val.strftime("%Y-%m-%d %H:%M:%S")
+            # Convert UTC to IST (UTC+5:30) for display
+            if val.tzinfo is None:
+                val = val.replace(tzinfo=timezone.utc)
+            ist = val + timedelta(hours=5, minutes=30)
+            doc[key] = ist.strftime("%Y-%m-%d %H:%M:%S")
     return doc
 
 
