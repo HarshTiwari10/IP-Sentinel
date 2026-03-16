@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 export default function App() {
   const [isLogin, setIsLogin] = useState(true);
   const [rememberMe, setRememberMe] = useState(true);
@@ -16,7 +18,7 @@ export default function App() {
     setSuccessMsg("");
     setLoading(true);
 
-    const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    
     const endpoint = isLogin ? `${API}/api/login` : `${API}/api/register`;
     const payload = isLogin
       ? { username, password }

@@ -8,7 +8,10 @@ from app.routes.dashboard_routes import dashboard_bp
 def create_app():
 
     app = Flask(__name__)
-    CORS(app)
+    CORS(app, origins=[
+    "http://localhost:5173",
+    "https://ip-sentinel-frontend.onrender.com"
+    ])
 
     # SECRET KEY
     app.config["SECRET_KEY"] = "your-super-secret-key-change-this"
