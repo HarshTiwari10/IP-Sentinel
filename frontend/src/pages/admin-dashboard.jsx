@@ -77,7 +77,16 @@ export default function AdminDashboard() {
   const fetchLogs = useCallback(async () => {
     try {
       const res = await fetch(`${API}/api/admin/logs`, { headers: authHeaders() });
-      if (res.ok) setLiveLogs(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        // Sort by login_time descending — handles both "2026-03-16 HH:MM:SS" and ISO "2026-03-16THH:MM:SS+00:00" formats
+        data.sort((a, b) => {
+          const ta = new Date(a.login_time.replace(" ", "T")).getTime();
+          const tb = new Date(b.login_time.replace(" ", "T")).getTime();
+          return tb - ta;
+        });
+        setLiveLogs(data);
+      }
     } catch {}
   }, []);
 
@@ -280,7 +289,9 @@ export default function AdminDashboard() {
     });
 
     liveLogs.forEach(log => {
-      const logTime = new Date(log.login_time.replace(" ", "T")).getTime();
+      // Handle both "2026-03-16 HH:MM:SS" (local) and "2026-03-16THH:MM:SS+00:00" (UTC) formats
+      const normalized = log.login_time.replace(" ", "T");
+      const logTime = new Date(normalized).getTime();
       const windowStart = buckets[0].ts - 5 * 60 * 1000;
       if (logTime < windowStart) return;
       // Find which bucket this belongs to

@@ -36,7 +36,7 @@ def check_and_auto_block(ip):
     max_attempts = cfg.get("max_failed_attempts", 5)
     window_minutes = cfg.get("block_duration_minutes", 30)
 
-    since = datetime.now() - timedelta(minutes=window_minutes)
+    since = datetime.utcnow() - timedelta(minutes=window_minutes)
     failed_count = ip_logs_collection.count_documents({
         "ip_address": ip,
         "status": "FAILED",
@@ -50,7 +50,7 @@ def check_and_auto_block(ip):
             blacklist_collection.insert_one({
                 "ip_address": ip,
                 "reason": f"Auto-blocked: {failed_count} failed attempts in {window_minutes} min",
-                "blocked_at": datetime.now(),
+                "blocked_at": datetime.utcnow(),
                 "expires": "Never",
                 "type": "blacklist",
                 "auto_blocked": True
@@ -74,7 +74,7 @@ def login():
     if blacklisted:
         ip_logs_collection.insert_one({
             "username": username, "ip_address": client_ip,
-            "login_time": datetime.now(), "status": "BLOCKED"
+            "login_time": datetime.utcnow(), "status": "BLOCKED"
         })
         return jsonify({"message": "Your IP is blocked. Contact administrator."}), 403
 
@@ -84,7 +84,7 @@ def login():
         # 2. Log failed attempt
         ip_logs_collection.insert_one({
             "username": username, "ip_address": client_ip,
-            "login_time": datetime.now(), "status": "FAILED"
+            "login_time": datetime.utcnow(), "status": "FAILED"
         })
         # 3. Auto-block check (MAIN FEATURE)
         auto_blocked = check_and_auto_block(client_ip)
@@ -92,7 +92,7 @@ def login():
             return jsonify({"message": "Too many failed attempts. Your IP has been blocked."}), 403
 
         cfg = get_config()
-        since = datetime.now() - timedelta(minutes=cfg.get("block_duration_minutes", 30))
+        since = datetime.utcnow() - timedelta(minutes=cfg.get("block_duration_minutes", 30))
         fails = ip_logs_collection.count_documents({
             "ip_address": client_ip, "status": "FAILED", "login_time": {"$gte": since}
         })
@@ -105,12 +105,12 @@ def login():
     # 4. Log success
     ip_logs_collection.insert_one({
         "username": username, "ip_address": client_ip,
-        "login_time": datetime.now(), "status": "SUCCESS"
+        "login_time": datetime.utcnow(), "status": "SUCCESS"
     })
 
     token = jwt.encode(
         {"user_id": str(user["_id"]), "username": user["username"],
-         "role": user["role"], "exp": datetime.now() + timedelta(hours=2)},
+         "role": user["role"], "exp": datetime.utcnow() + timedelta(hours=2)},
         current_app.config["SECRET_KEY"], algorithm="HS256"
     )
     return jsonify({"message": "Login successful", "role": user["role"], "token": token}), 200
@@ -142,7 +142,7 @@ def admin_dashboard():
 def get_metrics():
     total_logs = ip_logs_collection.count_documents({})
     active_blocks = blacklist_collection.count_documents({"type": "blacklist"})
-    since_24h = datetime.now() - timedelta(hours=24)
+    since_24h = datetime.utcnow() - timedelta(hours=24)
     failed_attempts = ip_logs_collection.count_documents({"status": "FAILED", "login_time": {"$gte": since_24h}})
     whitelisted = blacklist_collection.count_documents({"type": "whitelist"})
     return jsonify({
@@ -178,7 +178,7 @@ def save_security_config():
         {"_id": "security_config"},
         {"$set": {"max_failed_attempts": max_attempts,
                   "block_duration_minutes": block_duration,
-                  "updated_at": datetime.now()}},
+                  "updated_at": datetime.utcnow()}},
         upsert=True
     )
     return jsonify({"message": "Configuration saved successfully",
@@ -206,7 +206,7 @@ def add_to_blacklist():
     blacklist_collection.delete_one({"ip_address": ip, "type": "whitelist"})
     if blacklist_collection.find_one({"ip_address": ip, "type": "blacklist"}):
         return jsonify({"message": "IP already blacklisted"}), 409
-    doc = {"ip_address": ip, "reason": reason, "blocked_at": datetime.now(),
+    doc = {"ip_address": ip, "reason": reason, "blocked_at": datetime.utcnow(),
            "expires": "Never", "type": "blacklist", "auto_blocked": False}
     result = blacklist_collection.insert_one(doc)
     doc["_id"] = str(result.inserted_id)
@@ -254,7 +254,7 @@ def add_to_whitelist():
     blacklist_collection.delete_one({"ip_address": ip, "type": "blacklist"})
     if blacklist_collection.find_one({"ip_address": ip, "type": "whitelist"}):
         return jsonify({"message": "IP already whitelisted"}), 409
-    doc = {"ip_address": ip, "last_access": datetime.now(),
+    doc = {"ip_address": ip, "last_access": datetime.utcnow(),
            "status": "Manually Whitelisted", "type": "whitelist"}
     result = blacklist_collection.insert_one(doc)
     doc["_id"] = str(result.inserted_id)
@@ -294,7 +294,7 @@ def simulate_attack():
     ip_logs_collection.insert_one({
         "username": username,
         "ip_address": target_ip,
-        "login_time": datetime.now(),
+        "login_time": datetime.utcnow(),
         "status": status,
         "simulated": True
     })
@@ -306,7 +306,7 @@ def simulate_attack():
         auto_blocked = check_and_auto_block(target_ip)
 
     window = cfg.get("block_duration_minutes", 30)
-    since = datetime.now() - timedelta(minutes=window)
+    since = datetime.utcnow() - timedelta(minutes=window)
     fail_count = ip_logs_collection.count_documents({
         "ip_address": target_ip, "status": "FAILED", "login_time": {"$gte": since}
     })
