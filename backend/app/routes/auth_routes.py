@@ -67,7 +67,7 @@ def login():
     username = data.get("username")
     password = data.get("password")
     selected_role = data.get("role")
-    client_ip = request.remote_addr
+    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr).split(",")[0].strip()
 
     # 1. Check blacklist first
     blacklisted = blacklist_collection.find_one({"ip_address": client_ip, "type": "blacklist"})
