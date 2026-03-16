@@ -280,7 +280,7 @@ export default function AdminDashboard() {
     });
 
     liveLogs.forEach(log => {
-      const logTime = new Date(log.login_time).getTime();
+      const logTime = new Date(log.login_time.replace(" ", "T")).getTime();
       const windowStart = buckets[0].ts - 5 * 60 * 1000;
       if (logTime < windowStart) return;
       // Find which bucket this belongs to
