@@ -16,7 +16,8 @@ export default function App() {
     setSuccessMsg("");
     setLoading(true);
 
-    const endpoint = isLogin ? "http://localhost:5000/api/login" : "http://localhost:5000/api/register";
+    const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const endpoint = isLogin ? `${API}/api/login` : `${API}/api/register`;
     const payload = isLogin
       ? { username, password }
       : { username, password, role };
