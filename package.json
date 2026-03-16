@@ -1,0 +1,14 @@
+{
+  "name": "ip_monitoring_system",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "backend": "cd backend && python run.py",
+    "frontend": "cd frontend && npm run dev",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "build": "cd frontend && npm install && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
