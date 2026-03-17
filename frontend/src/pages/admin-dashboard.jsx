@@ -8,6 +8,13 @@ import {
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// Format ISO UTC timestamp to readable local time
+const formatTime = (ts) => {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  return isNaN(d) ? ts : d.toLocaleString("en-IN", { dateStyle: "short", timeStyle: "medium", hour12: false });
+};
+
 function authHeaders() {
   return {
     "Content-Type": "application/json",
@@ -79,13 +86,8 @@ export default function AdminDashboard() {
       const res = await fetch(`${API}/api/admin/logs`, { headers: authHeaders() });
       if (res.ok) {
         const data = await res.json();
-        // Sort by login_time descending — handles both "2026-03-16 HH:MM:SS" and ISO "2026-03-16THH:MM:SS+00:00" formats
-        data.sort((a, b) => {
-          const toMs = t => new Date(t.replace(" ", "T") + (t.includes("+") || t.endsWith("Z") ? "" : "Z")).getTime();
-          const ta = toMs(a.login_time);
-          const tb = toMs(b.login_time);
-          return tb - ta;
-        });
+        // Sort by login_time descending — backend now sends ISO UTC: "2026-03-17T17:17:50+00:00"
+        data.sort((a, b) => new Date(b.login_time).getTime() - new Date(a.login_time).getTime());
         setLiveLogs(data);
       }
     } catch {}
@@ -289,13 +291,8 @@ export default function AdminDashboard() {
     });
 
     liveLogs.forEach(log => {
-      const s = log.login_time;
-      // MongoDB stores as UTC. Backend serialize_doc converts datetime objects to IST string,
-      // but if the value comes back as a plain string like "2026-03-17 16:50:06" it is UTC.
-      // Detect: if string has no timezone suffix and hour < browser local hour by ~5.5h, it is UTC.
-      // Safest: always parse as UTC (append Z) then compare against browser UTC timestamps.
-      const normalized = s.replace(" ", "T") + (s.includes("+") || s.endsWith("Z") ? "" : "Z");
-      const logMs = new Date(normalized).getTime();
+      // Backend sends ISO UTC string "2026-03-17T17:17:50+00:00" — new Date() parses it correctly
+      const logMs = new Date(log.login_time).getTime();
       if (isNaN(logMs) || logMs < windowStartMs) return;
       const slotIndex = Math.min(slots - 1, Math.floor((logMs - windowStartMs) / intervalMs));
       if (log.status === 'SUCCESS') buckets[slotIndex].success++;
@@ -510,7 +507,7 @@ export default function AdminDashboard() {
                 <tr><td colSpan="5" className="text-center py-12 text-slate-400 italic">No logs yet.</td></tr>
               ) : liveLogs.map(log => (
                 <tr key={log._id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
-                  <td className="py-3 text-slate-500 text-xs">{log.login_time}</td>
+                  <td className="py-3 text-slate-500 text-xs">{formatTime(log.login_time)}</td>
                   <td className="py-3 font-mono text-slate-700">{log.ip_address}</td>
                   <td className="py-3 text-slate-600">{log.username}</td>
                   <td className="py-3"><span className={statusBadge(log.status)}>{log.status}</span></td>
@@ -571,7 +568,7 @@ export default function AdminDashboard() {
                 <tr key={item._id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
                   <td className="py-4 font-mono text-slate-700">{item.ip_address}</td>
                   <td className="py-4 text-slate-500 text-xs max-w-[200px]">{item.reason}</td>
-                  <td className="py-4 text-slate-500 text-xs">{item.blocked_at}</td>
+                  <td className="py-4 text-slate-500 text-xs">{formatTime(item.blocked_at)}</td>
                   <td className="py-4">
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${item.auto_blocked ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600'}`}>
                       {item.auto_blocked ? 'AUTO' : 'MANUAL'}
@@ -635,7 +632,7 @@ export default function AdminDashboard() {
                   <td className="py-4">
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700">{item.status}</span>
                   </td>
-                  <td className="py-4 text-slate-500 text-xs">{item.last_access}</td>
+                  <td className="py-4 text-slate-500 text-xs">{formatTime(item.last_access)}</td>
                   <td className="py-4 text-right">
                     <button onClick={() => handleBlacklistIP(item.ip_address)}
                       className="inline-flex items-center text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-md transition-colors">
