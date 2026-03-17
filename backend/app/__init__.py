@@ -19,9 +19,15 @@ def create_app():
     # REGISTER BLUEPRINTS (🔥 IMPORTANT)
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
+    
+    @app.route("/ping")
+    def ping():
+        return {"status": "alive"}, 200
 
     @app.route("/")
     def home():
         return {"message": "Backend Running Successfully"}
+    
+    
 
     return app
