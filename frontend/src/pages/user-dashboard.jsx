@@ -16,11 +16,9 @@ export default function UserDashboard() {
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <div className="bg-white p-10 rounded-xl shadow-md text-center">
         <h1 className="text-3xl font-bold text-slate-800 mb-4">
-          User Dashboard
-        </h1>
-        <p className="text-slate-500">
           This is a Landing Page for users - Dashboard like Amazon or Flipcart.
-        </p>
+        </h1>
+        
       </div>
     </div>
   );
