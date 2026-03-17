@@ -81,8 +81,8 @@ export default function AdminDashboard() {
         const data = await res.json();
         // Sort by login_time descending — handles both "2026-03-16 HH:MM:SS" and ISO "2026-03-16THH:MM:SS+00:00" formats
         data.sort((a, b) => {
-          const ta = new Date(a.login_time.replace(" ", "T")).getTime();
-          const tb = new Date(b.login_time.replace(" ", "T")).getTime();
+          const ta = new Date(a.login_time.replace(" ", "T") + "+05:30").getTime();
+          const tb = new Date(b.login_time.replace(" ", "T") + "+05:30").getTime();
           return tb - ta;
         });
         setLiveLogs(data);
@@ -289,8 +289,10 @@ export default function AdminDashboard() {
     });
 
     liveLogs.forEach(log => {
-      // Handle both "2026-03-16 HH:MM:SS" (local) and "2026-03-16THH:MM:SS+00:00" (UTC) formats
-      const normalized = log.login_time.replace(" ", "T");
+      // Backend sends IST time as "2026-03-17 21:42:00" (no timezone suffix).
+      // Appending "+05:30" tells the browser to treat it as IST correctly,
+      // so it converts to the same UTC epoch as the bucket timestamps.
+      const normalized = log.login_time.replace(" ", "T") + "+05:30";
       const logTime = new Date(normalized).getTime();
       const windowStart = buckets[0].ts - 5 * 60 * 1000;
       if (logTime < windowStart) return;

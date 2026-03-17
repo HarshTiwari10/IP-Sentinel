@@ -19,7 +19,7 @@ export default function UserDashboard() {
           User Dashboard
         </h1>
         <p className="text-slate-500">
-          Welcome to IP Monitoring System.
+          This is a Landing Page for users - Dashboard like Amazon or Flipcart.
         </p>
       </div>
     </div>
