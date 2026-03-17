@@ -81,8 +81,9 @@ export default function AdminDashboard() {
         const data = await res.json();
         // Sort by login_time descending — handles both "2026-03-16 HH:MM:SS" and ISO "2026-03-16THH:MM:SS+00:00" formats
         data.sort((a, b) => {
-          const ta = new Date(a.login_time.replace(" ", "T")).getTime();
-          const tb = new Date(b.login_time.replace(" ", "T")).getTime();
+          const toMs = t => new Date(t.replace(" ", "T") + (t.includes("+") || t.endsWith("Z") ? "" : "Z")).getTime();
+          const ta = toMs(a.login_time);
+          const tb = toMs(b.login_time);
           return tb - ta;
         });
         setLiveLogs(data);
@@ -276,36 +277,29 @@ export default function AdminDashboard() {
 
   // ─── Chart Data: bucket logs into 12 time slots ────────────────────────────
   const chartData = useMemo(() => {
-    const now = new Date();
+    const nowMs = Date.now();
     const slots = 12;
-    const intervalMs = 30 * 60 * 1000; // 30-min slots → 6 hour window
+    const intervalMs = 30 * 60 * 1000;
+    const windowStartMs = nowMs - slots * intervalMs;
+
     const buckets = Array.from({ length: slots }, (_, i) => {
-      const t = new Date(now.getTime() - (slots - 1 - i) * intervalMs);
-      return {
-        time: t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        success: 0,
-        failed: 0,
-        ts: t.getTime()
-      };
+      const slotEndMs = windowStartMs + (i + 1) * intervalMs;
+      const t = new Date(slotEndMs);
+      return { time: t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }), success: 0, failed: 0 };
     });
 
     liveLogs.forEach(log => {
-      // Backend sends time already converted to IST as "2026-03-17 16:51:53".
-      // Browser's new Date() buckets use local time (also IST).
-      // Treat the log string as LOCAL time by replacing space with T — no timezone suffix.
-      // Both sides are in the same timezone so comparison is correct.
-      const normalized = log.login_time.replace(" ", "T");
-      const logTime = new Date(normalized).getTime();
-      const windowStart = buckets[0].ts - intervalMs;
-      if (logTime < windowStart) return;
-      // Find which bucket this belongs to
-      for (let i = slots - 1; i >= 0; i--) {
-        if (logTime >= buckets[i].ts) {
-          if (log.status === 'SUCCESS') buckets[i].success++;
-          else if (log.status === 'FAILED') buckets[i].failed++;
-          break;
-        }
-      }
+      const s = log.login_time;
+      // MongoDB stores as UTC. Backend serialize_doc converts datetime objects to IST string,
+      // but if the value comes back as a plain string like "2026-03-17 16:50:06" it is UTC.
+      // Detect: if string has no timezone suffix and hour < browser local hour by ~5.5h, it is UTC.
+      // Safest: always parse as UTC (append Z) then compare against browser UTC timestamps.
+      const normalized = s.replace(" ", "T") + (s.includes("+") || s.endsWith("Z") ? "" : "Z");
+      const logMs = new Date(normalized).getTime();
+      if (isNaN(logMs) || logMs < windowStartMs) return;
+      const slotIndex = Math.min(slots - 1, Math.floor((logMs - windowStartMs) / intervalMs));
+      if (log.status === 'SUCCESS') buckets[slotIndex].success++;
+      else if (log.status === 'FAILED') buckets[slotIndex].failed++;
     });
 
     return buckets;
