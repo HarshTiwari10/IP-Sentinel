@@ -278,8 +278,9 @@ export default function AdminDashboard() {
   const chartData = useMemo(() => {
     const now = new Date();
     const slots = 12;
+    const intervalMs = 30 * 60 * 1000; // 30-min slots → 6 hour window
     const buckets = Array.from({ length: slots }, (_, i) => {
-      const t = new Date(now.getTime() - (slots - 1 - i) * 5 * 60 * 1000);
+      const t = new Date(now.getTime() - (slots - 1 - i) * intervalMs);
       return {
         time: t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
         success: 0,
@@ -294,7 +295,7 @@ export default function AdminDashboard() {
       // so it converts to the same UTC epoch as the bucket timestamps.
       const normalized = log.login_time.replace(" ", "T") + "+05:30";
       const logTime = new Date(normalized).getTime();
-      const windowStart = buckets[0].ts - 5 * 60 * 1000;
+      const windowStart = buckets[0].ts - intervalMs;
       if (logTime < windowStart) return;
       // Find which bucket this belongs to
       for (let i = slots - 1; i >= 0; i--) {
@@ -464,7 +465,7 @@ export default function AdminDashboard() {
         <div className="flex justify-between items-center mb-5">
           <div>
             <h3 className="font-serif italic text-slate-700 text-lg">Access Trends</h3>
-            <p className="text-xs text-slate-400 mt-0.5">Last 60 minutes · 5-min intervals</p>
+            <p className="text-xs text-slate-400 mt-0.5">Last 6 hours · 30-min intervals</p>
           </div>
           <div className="flex items-center space-x-4 text-xs font-medium text-slate-500">
             <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span>SUCCESS</span>
